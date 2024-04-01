@@ -121,6 +121,165 @@ def extract_features(tokens) :
 #
    #return result
 
+## --------- synonyms extraction ----------- 
+def get_synonyms(word):
+    synonyms = set()
+    for synset in wordnet.synsets(word):
+        for lemma in synset.lemmas():
+            synonyms.add(lemma.name())
+    return synonyms
+## --------- prefixes-sufixes ----------- 
+def extract_features_prefix_suffix(tokens):
+    result = []
+    token_strings = []
+    prefix_length=3
+    suffix_length=3
+    for k in range(len(tokens)):
+        tokenFeatures = []
+        t = tokens[k][0]
+
+        tokenFeatures.append("form=" + t)
+        tokenFeatures.append("prefix=" + t[:prefix_length])
+        tokenFeatures.append("suffix=" + t[-suffix_length:])
+
+        if k > 0:
+            tPrev = tokens[k-1][0]
+            tokenFeatures.append("formPrev=" + tPrev)
+            tokenFeatures.append("suf3Prev=" + tPrev[-suffix_length:])
+        else:
+            tokenFeatures.append("BoS")
+
+        if k < len(tokens) - 1:
+            tNext = tokens[k+1][0]
+            tokenFeatures.append("formNext=" + tNext)
+            tokenFeatures.append("suf3Next=" + tNext[-suffix_length:])
+        else:
+            tokenFeatures.append("EoS")
+        
+        result.append(tokenFeatures)
+    return result
+
+## ------------------ Extract features tf-idf for each token in given sentence ----------------------
+from sklearn.feature_extraction.text import TfidfVectorizer
+def extract_tfidf_features(tokens):
+    result = []
+    token_strings = []
+    prefix_length=3
+    suffix_length=3
+    for k in range(len(tokens)):
+        tokenFeatures = []
+        t = tokens[k][0]
+
+        tokenFeatures.append("form=" + t)
+        tokenFeatures.append("prefix=" + t[:prefix_length])
+        tokenFeatures.append("suffix=" + t[-suffix_length:])
+
+        if k > 0:
+            tPrev = tokens[k-1][0]
+            tokenFeatures.append("formPrev=" + tPrev)
+            tokenFeatures.append("suf3Prev=" + tPrev[-suffix_length:])
+        else:
+            tokenFeatures.append("BoS")
+
+        if k < len(tokens) - 1:
+            tNext = tokens[k+1][0]
+            tokenFeatures.append("formNext=" + tNext)
+            tokenFeatures.append("suf3Next=" + tNext[-suffix_length:])
+        else:
+            tokenFeatures.append("EoS")
+        
+        result.append(tokenFeatures)
+        token_strings.append(t)
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_features = tfidf_vectorizer.fit_transform(token_strings)
+    feature_names = tfidf_vectorizer.get_feature_names_out()
+    for i, tfidf_row in enumerate(tfidf_features):
+        tfidf_values = tfidf_row.toarray()[0]
+        tfidf_token_features = [f"tfidf_{feature}={value:.3f}" for feature, value in zip(feature_names, tfidf_values)]
+        result[i] += tfidf_token_features
+    
+    return result
+
+## ------------------- Drugnames to use for synonym detection ---------------------
+def is_drug_name(token):
+    drug_names = {
+        "aspirin", "ibuprofen", "acetaminophen", "paracetamol", "codeine", 
+        "morphine", "oxycodone", "hydrocodone", "tramadol", "fentanyl", 
+        "naproxen", "diclofenac", "celecoxib", "meloxicam", "indomethacin", 
+        "amoxicillin", "cephalexin", "azithromycin", "ciprofloxacin", 
+        "metronidazole", "fluconazole", "atenolol", "metoprolol", 
+        "lisinopril", "losartan", "atorvastatin", "warfarin", "clopidogrel", 
+        "phenytoin", "carbamazepine", "valproic acid", "phenobarbital", 
+        "gabapentin", "pregabalin", "alprazolam", "diazepam", "zolpidem", 
+        "clonazepam", "amitriptyline", "venlafaxine", "fluoxetine", 
+        "citalopram", "sertraline", "trazodone", "mirtazapine", 
+        "amoxicillin", "ceftriaxone", "doxycycline", "ciprofloxacin", 
+        "metronidazole", "erythromycin", "azithromycin", "clindamycin", 
+        "pantoprazole", "omeprazole", "lansoprazole", "ranitidine", 
+        "famotidine", "duloxetine", "mirtazapine", "bupropion", 
+        "amitriptyline", "nortriptyline", "linezolid", "vancomycin", 
+        "daptomycin", "tigecycline", "meropenem", "imipenem", "ceftriaxone", 
+        "cefotaxime", "ceftazidime", "cefepime", "aztreonam", 
+        "ciprofloxacin", "levofloxacin", "moxifloxacin", "norfloxacin", 
+        "trimethoprim", "sulfamethoxazole", "amoxicillin", "ampicillin", 
+        "piperacillin", "ceftriaxone", "cefotaxime", "ceftazidime", 
+        "cefepime", "ciprofloxacin", "levofloxacin", "moxifloxacin", 
+        "ciprofloxacin", "ceftriaxone", "ceftazidime", "doripenem", 
+        "ertapenem", "imipenem", "meropenem", "gentamicin", "tobramycin", 
+        "amikacin", "amoxicillin", "ampicillin", "piperacillin", 
+        "ceftriaxone", "cefotaxime", "ceftazidime", "cefepime", 
+        "ertapenem", "imipenem", "meropenem", "aztreonam", 
+        "doripenem", "ertapenem", "imipenem", "meropenem", 
+        "cephalexin", "cefadroxil", "cefpodoxime", "cefuroxime", 
+        "cefprozil", "ceftibuten", "cefixime", "cefdinir", 
+        "ceftriaxone", "cefotaxime", "ceftazidime", "cefepime", 
+        "ertapenem", "imipenem", "meropenem", "aztreonam", 
+        "gentamicin", "tobramycin", "amikacin", "amoxicillin", 
+        "ampicillin", "piperacillin", "ceftriaxone", "cefotaxime", 
+        "ceftazidime", "cefepime", "ertapenem", "imipenem", 
+        "meropenem", "aztreonam", "ciprofloxacin", "levofloxacin", 
+        "moxifloxacin", "ofloxacin", "trimethoprim", "sulfamethoxazole", 
+        "amoxicillin", "ampicillin", "piperacillin", "ceftriaxone", 
+        "cefotaxime", "ceftazidime", "cefepime", "aztreonam", 
+        "gentamicin", "tobramycin", "amikacin"
+    }
+    return token.lower() in drug_names
+## ------------------- Extract synonyms ------------------------
+def extract_synonyms_features(tokens):
+    result = []
+    for k in range(len(tokens)):
+        tokenFeatures = []
+        t = tokens[k][0]
+        tokenFeatures.append("form=" + t)
+        tokenFeatures.append("suf3=" + t[-3:])
+        if k > 0:
+            tPrev = tokens[k-1][0]
+            tokenFeatures.append("formPrev=" + tPrev)
+            tokenFeatures.append("suf3Prev=" + tPrev[-3:])
+        else:
+            tokenFeatures.append("BoS")
+        if k < len(tokens) - 1:
+            tNext = tokens[k+1][0]
+            tokenFeatures.append("formNext=" + tNext)
+            tokenFeatures.append("suf3Next=" + tNext[-3:])
+        else:
+            tokenFeatures.append("EoS")
+        result.append(tokenFeatures)
+
+    expanded_features = []
+    for token, features in zip(tokens, result):
+        if is_drug_name(token[0]):
+            synonyms = get_synonyms(token[0])
+            expanded_token_features = [token[0]]
+            for synonym in synonyms:
+                expanded_token_features.append("synonym=" + synonym)
+            expanded_features.append("\t".join(features + expanded_token_features))
+        else:
+            expanded_features.append("\t".join(features))
+
+    return expanded_features
+
+
 ## --------- MAIN PROGRAM ----------- 
 ## --
 ## -- Usage:  baseline-NER.py target-dir
@@ -157,7 +316,7 @@ for f in listdir(datadir) :
       # convert the sentence to a list of tokens
       tokens = tokenize(stext)
       # extract sentence features
-      features = extract_features(tokens)
+      features = extract_features(tokens) ##change this part for every testing
 
       # print features in format expected by crfsuite trainer
       for i in range (0,len(tokens)):
