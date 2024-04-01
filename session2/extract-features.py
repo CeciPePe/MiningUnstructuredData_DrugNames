@@ -202,47 +202,10 @@ def extract_tfidf_features(tokens):
 
 ## ------------------- Drugnames to use for synonym detection ---------------------
 def is_drug_name(token):
-    drug_names = {
-        "aspirin", "ibuprofen", "acetaminophen", "paracetamol", "codeine", 
-        "morphine", "oxycodone", "hydrocodone", "tramadol", "fentanyl", 
-        "naproxen", "diclofenac", "celecoxib", "meloxicam", "indomethacin", 
-        "amoxicillin", "cephalexin", "azithromycin", "ciprofloxacin", 
-        "metronidazole", "fluconazole", "atenolol", "metoprolol", 
-        "lisinopril", "losartan", "atorvastatin", "warfarin", "clopidogrel", 
-        "phenytoin", "carbamazepine", "valproic acid", "phenobarbital", 
-        "gabapentin", "pregabalin", "alprazolam", "diazepam", "zolpidem", 
-        "clonazepam", "amitriptyline", "venlafaxine", "fluoxetine", 
-        "citalopram", "sertraline", "trazodone", "mirtazapine", 
-        "amoxicillin", "ceftriaxone", "doxycycline", "ciprofloxacin", 
-        "metronidazole", "erythromycin", "azithromycin", "clindamycin", 
-        "pantoprazole", "omeprazole", "lansoprazole", "ranitidine", 
-        "famotidine", "duloxetine", "mirtazapine", "bupropion", 
-        "amitriptyline", "nortriptyline", "linezolid", "vancomycin", 
-        "daptomycin", "tigecycline", "meropenem", "imipenem", "ceftriaxone", 
-        "cefotaxime", "ceftazidime", "cefepime", "aztreonam", 
-        "ciprofloxacin", "levofloxacin", "moxifloxacin", "norfloxacin", 
-        "trimethoprim", "sulfamethoxazole", "amoxicillin", "ampicillin", 
-        "piperacillin", "ceftriaxone", "cefotaxime", "ceftazidime", 
-        "cefepime", "ciprofloxacin", "levofloxacin", "moxifloxacin", 
-        "ciprofloxacin", "ceftriaxone", "ceftazidime", "doripenem", 
-        "ertapenem", "imipenem", "meropenem", "gentamicin", "tobramycin", 
-        "amikacin", "amoxicillin", "ampicillin", "piperacillin", 
-        "ceftriaxone", "cefotaxime", "ceftazidime", "cefepime", 
-        "ertapenem", "imipenem", "meropenem", "aztreonam", 
-        "doripenem", "ertapenem", "imipenem", "meropenem", 
-        "cephalexin", "cefadroxil", "cefpodoxime", "cefuroxime", 
-        "cefprozil", "ceftibuten", "cefixime", "cefdinir", 
-        "ceftriaxone", "cefotaxime", "ceftazidime", "cefepime", 
-        "ertapenem", "imipenem", "meropenem", "aztreonam", 
-        "gentamicin", "tobramycin", "amikacin", "amoxicillin", 
-        "ampicillin", "piperacillin", "ceftriaxone", "cefotaxime", 
-        "ceftazidime", "cefepime", "ertapenem", "imipenem", 
-        "meropenem", "aztreonam", "ciprofloxacin", "levofloxacin", 
-        "moxifloxacin", "ofloxacin", "trimethoprim", "sulfamethoxazole", 
-        "amoxicillin", "ampicillin", "piperacillin", "ceftriaxone", 
-        "cefotaxime", "ceftazidime", "cefepime", "aztreonam", 
-        "gentamicin", "tobramycin", "amikacin"
-    }
+    # Read drug names from the text file
+    with open('resources/HSDB.txt', 'r') as file:
+        drug_names = {line.strip().lower() for line in file}
+
     return token.lower() in drug_names
 ## ------------------- Extract synonyms ------------------------
 def extract_synonyms_features(tokens):
