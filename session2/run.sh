@@ -36,7 +36,7 @@ echo "Training Decision Tree model..."
 python3 train-dt.py model.joblib vectorizer.joblib < train.clf.feat
 # run DT model
 echo "Running Decision Tree model..."
-python3 predict-sklearn.py model.joblib vectorizer.joblib < devel.feat > devel-DT.out
+python3 predictn.py model.joblib vectorizer.joblib < devel.feat > devel-DT.out
 # evaluate DT results 
 echo "Evaluating Decision Tree results..."
 python3 evaluator.py NER "$BASEDIR/data/devel" devel-DT.out > devel-DT.stats
@@ -46,7 +46,7 @@ echo "Training Decision Tree model..."
 python3 train-svm.py model.joblib vectorizer.joblib < train.clf.feat
 # run SVM model
 echo "Running Decision Tree model..."
-python3 predict-sklearn.py model.joblib vectorizer.joblib < devel.feat > devel-sv,.out
+python3 predict.py model.joblib vectorizer.joblib < devel.feat > devel-sv,.out
 # evaluate SVM results 
 echo "Evaluating Decision Tree results..."
 python3 evaluator.py NER "$BASEDIR/data/devel" devel-svm.out > devel-svm.stats
@@ -56,7 +56,7 @@ echo "Training Decision Tree model..."
 python3 train-rf.py model.joblib vectorizer.joblib < train.clf.feat
 # run RF model
 echo "Running Decision Tree model..."
-python3 predict-sklearn.py model.joblib vectorizer.joblib < devel.feat > devel-rf.out
+python3 predict.py model.joblib vectorizer.joblib < devel.feat > devel-rf.out
 # evaluate RF results 
 echo "Evaluating Decision Tree results..."
 python3 evaluator.py NER "$BASEDIR/data/devel" devel-rf.out > devel-rf.stats
