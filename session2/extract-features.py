@@ -236,12 +236,16 @@ def extract_synonyms_features(tokens):
             expanded_token_features = [token[0]]
             for synonym in synonyms:
                 expanded_token_features.append("synonym=" + synonym)
+            while len(expanded_token_features) < len(features):
+                expanded_token_features.append("")
             expanded_features.append("\t".join(features + expanded_token_features))
         else:
+            while len(features) < 7:
+                features.append("")
             expanded_features.append("\t".join(features))
 
-    return expanded_features
 
+    return expanded_features
 
 ## --------- MAIN PROGRAM ----------- 
 ## --
