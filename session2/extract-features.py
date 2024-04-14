@@ -121,13 +121,7 @@ def extract_features(tokens) :
 #
    #return result
 
-## --------- synonyms extraction ----------- 
-def get_synonyms(word):
-    synonyms = set()
-    for synset in wordnet.synsets(word):
-        for lemma in synset.lemmas():
-            synonyms.add(lemma.name())
-    return synonyms
+
 ## --------- prefixes-sufixes ----------- 
 def extract_features_prefix_suffix(tokens):
     result = []
@@ -207,6 +201,14 @@ def is_drug_name(token):
         drug_names = {line.strip().lower() for line in file}
 
     return token.lower() in drug_names
+
+## --------- synonyms extraction ----------- 
+def get_synonyms(word):
+    synonyms = set()
+    for synset in wordnet.synsets(word):
+        for lemma in synset.lemmas():
+            synonyms.add(lemma.name())
+    return synonyms
 ## ------------------- Extract synonyms ------------------------
 def extract_synonyms_features(tokens):
     result = []
