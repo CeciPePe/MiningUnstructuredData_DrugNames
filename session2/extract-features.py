@@ -3,12 +3,16 @@
 import sys
 import re
 from os import listdir
-
 from xml.dom.minidom import parse
 from nltk.tokenize import word_tokenize
 from gensim.models import Word2Vec
+import nltk
+#nltk.download('averaged_perceptron_tagger')
+#nltk.download('wordnet')
+from nltk.corpus import wordnet
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
 
-   
 ## --------- tokenize sentence ----------- 
 ## -- Tokenize sentence, returning tokens and span offsets
 
@@ -42,84 +46,163 @@ def get_tag(token, spans) :
 ## -- Extract features for each token in given sentence
 
 def extract_features(tokens) :
-   #Contextual features
-   # for each token, generate list of features and add it to the result
    result = []
-   for k in range(len(tokens)):
-      token_features = []
+   for k in range(0,len(tokens)):
+      tokenFeatures = [];
       t = tokens[k][0]
 
-      # Basic features for the current token
-      token_features.append("form=" + t)
-      token_features.append("suf3=" + t[-3:])
+      tokenFeatures.append("form="+t)
+      tokenFeatures.append("suf3="+t[-3:])
 
-      # Features for previous tokens within the window size
-      for i in range(1, 1 + 1):
-         if k - i >= 0:
-               t_prev = tokens[k - i][0]
-               token_features.append(f"formPrev{i}=" + t_prev)
-               token_features.append(f"suf3Prev{i}=" + t_prev[-3:])
-         else:
-               token_features.append(f"BoS{i}")
+      if k>0 :
+         tPrev = tokens[k-1][0]
+         tokenFeatures.append("formPrev="+tPrev)
+         tokenFeatures.append("suf3Prev="+tPrev[-3:])
+      else :
+         tokenFeatures.append("BoS")
 
-      # Features for next tokens within the window size
-      for i in range(1, 1 + 1):
-         if k + i < len(tokens):
-               t_next = tokens[k + i][0]
-               token_features.append(f"formNext{i}=" + t_next)
-               token_features.append(f"suf3Next{i}=" + t_next[-3:])
-         else:
-               token_features.append(f"EoS{i}")
-
-      result.append(token_features)
-
+      if k<len(tokens)-1 :
+         tNext = tokens[k+1][0]
+         tokenFeatures.append("formNext="+tNext)
+         tokenFeatures.append("suf3Next="+tNext[-3:])
+      else:
+         tokenFeatures.append("EoS")
+    
+      result.append(tokenFeatures)
+    
    return result
 
-   #Capitalization and brand names
-   #drug_brand_names = []
-   #with open('/Users/bielcave/Documents/MDS/4th_Semester/MUD/lab_resources/DDI/resources/DrugBank.txt', 'r') as file:
-   #   for line in file:
-   #      parts = line.strip().split('|')
-   #      if parts[1] == 'brand':
-   #            drug_brand_names.append(parts[0])
-#
-   #result = []
-   #for k in range(0, len(tokens)):
-   #   tokenFeatures = []
-   #   t = tokens[k][0]
-#
-   #   tokenFeatures.append("form=" + t)
-   #   tokenFeatures.append("suf3=" + t[-3:])
-#
-   #   if k > 0:
-   #      tPrev = tokens[k - 1][0]
-   #      tokenFeatures.append("formPrev=" + tPrev)
-   #      tokenFeatures.append("suf3Prev=" + tPrev[-3:])
-   #   else:
-   #      tokenFeatures.append("BoS")
-#
-   #   if k < len(tokens) - 1:
-   #      tNext = tokens[k + 1][0]
-   #      tokenFeatures.append("formNext=" + tNext)
-   #      tokenFeatures.append("suf3Next=" + tNext[-3:])
-   #   else:
-   #      tokenFeatures.append("EoS")
-#
-   #   # Check for capitalization
-   #   if t.isupper():
-   #      tokenFeatures.append("capitalization=true")
-   #   else:
-   #      tokenFeatures.append("capitalization=false")
-#
-   #   # Check for drug brand names
-   #   if t in drug_brand_names:
-   #      tokenFeatures.append("drugBrandName=true")
-   #   else:
-   #      tokenFeatures.append("drugBrandName=false")
-#
-   #   result.append(tokenFeatures)
-#
-   #return result
+## --------- DrugBank ----------
+def drugbank_extraction(tokens):
+    drug_brand_names = []
+    drug_names = []
+    group_names = []
+
+    with open('/Users/bielcave/Documents/MDS/4th_Semester/MUD/lab_resources/DDI/resources/DrugBank.txt', 'r') as file:
+        for line in file:
+            parts = line.strip().split('|')
+            if parts[1] == 'brand':
+                drug_brand_names.append(parts[0])
+            elif parts[1] == 'drug':
+                drug_names.append(parts[0])
+            elif parts[1] == 'group':
+                group_names.append(parts[0])
+
+    result = []
+    for k in range(0, len(tokens)):
+        tokenFeatures = []
+        t = tokens[k][0]
+
+        tokenFeatures.append("form=" + t)
+        tokenFeatures.append("suf3=" + t[-3:])
+
+        if k > 0:
+            tPrev = tokens[k - 1][0]
+            tokenFeatures.append("formPrev=" + tPrev)
+            tokenFeatures.append("suf3Prev=" + tPrev[-3:])
+        else:
+            tokenFeatures.append("BoS")
+
+        if k < len(tokens) - 1:
+            tNext = tokens[k + 1][0]
+            tokenFeatures.append("formNext=" + tNext)
+            tokenFeatures.append("suf3Next=" + tNext[-3:])
+        else:
+            tokenFeatures.append("EoS")
+
+        # Check for drug, brand, and group names
+        if t in drug_brand_names:
+            tokenFeatures.append("drugBank=brand")
+        elif t in drug_names:
+            tokenFeatures.append("drugBank=drug")
+        elif t in group_names:
+            tokenFeatures.append("drugBank=group")
+        else:
+            tokenFeatures.append("drugBank=other")
+
+        result.append(tokenFeatures)
+
+    return result
+   
+## --------- capitalization and brand names -----------
+def cap_brand_names(tokens):
+    drug_brand_names = []
+    with open('/Users/bielcave/Documents/MDS/4th_Semester/MUD/lab_resources/DDI/resources/DrugBank.txt', 'r') as file:
+        for line in file:
+            parts = line.strip().split('|')
+            if parts[1] == 'brand':
+                drug_brand_names.append(parts[0])
+
+    result = []
+    for k in range(0, len(tokens)):
+        tokenFeatures = []
+        t = tokens[k][0]
+
+        tokenFeatures.append("form=" + t)
+        tokenFeatures.append("suf3=" + t[-3:])
+
+        if k > 0:
+            tPrev = tokens[k - 1][0]
+            tokenFeatures.append("formPrev=" + tPrev)
+            tokenFeatures.append("suf3Prev=" + tPrev[-3:])
+        else:
+            tokenFeatures.append("BoS")
+
+        if k < len(tokens) - 1:
+            tNext = tokens[k + 1][0]
+            tokenFeatures.append("formNext=" + tNext)
+            tokenFeatures.append("suf3Next=" + tNext[-3:])
+        else:
+            tokenFeatures.append("EoS")
+
+        # Check for capitalization
+        if t.isupper():
+            tokenFeatures.append("capitalization=true")
+        else:
+            tokenFeatures.append("capitalization=false")
+
+        # Check for drug brand names
+        if t in drug_brand_names:
+            tokenFeatures.append("drugBrandName=true")
+        else:
+            tokenFeatures.append("drugBrandName=false")
+
+        result.append(tokenFeatures)
+
+    return result
+
+## --------- contextual features -----------
+def contextual_features(tokens):
+    result = []
+    for k in range(len(tokens)):
+        token_features = []
+        t = tokens[k][0]
+
+        # Basic features for the current token
+        token_features.append("form=" + t)
+        token_features.append("suf3=" + t[-3:])
+
+        # Features for previous tokens within the window size
+        for i in range(1, 1 + 1):
+            if k - i >= 0:
+                t_prev = tokens[k - i][0]
+                token_features.append(f"formPrev{i}=" + t_prev)
+                token_features.append(f"suf3Prev{i}=" + t_prev[-3:])
+            else:
+                token_features.append(f"BoS{i}")
+
+        # Features for next tokens within the window size
+        for i in range(1, 1 + 1):
+            if k + i < len(tokens):
+                t_next = tokens[k + i][0]
+                token_features.append(f"formNext{i}=" + t_next)
+                token_features.append(f"suf3Next{i}=" + t_next[-3:])
+            else:
+                token_features.append(f"EoS{i}")
+
+        result.append(token_features)
+
+    return result
 
 ## --------- synonyms extraction ----------- 
 def get_synonyms(word):
@@ -131,79 +214,116 @@ def get_synonyms(word):
 ## --------- prefixes-sufixes ----------- 
 def extract_features_prefix_suffix(tokens):
     result = []
-    token_strings = []
     prefix_length=3
     suffix_length=3
-    for k in range(len(tokens)):
+    stop_words = set(stopwords.words('english'))
+
+    drug_brand_names = []
+    drug = []
+    group_names = []
+    drug_names = []
+    
+    with open('/Users/bielcave/Documents/MDS/4th_Semester/MUD/lab_resources/DDI/resources/DrugBank.txt', 'r') as file:
+        for line in file:
+            parts = line.strip().split('|')
+            if parts[1] == 'brand':
+                drug_brand_names.append(parts[0])
+            elif parts[1] == 'drug':
+                drug.append(parts[0])
+            elif parts[1] == 'group':
+                group_names.append(parts[0])
+    
+    with open('/Users/bielcave/Documents/MDS/4th_Semester/MUD/lab_resources/DDI/resources/HSDB.txt', 'r') as file:
+        for line in file:
+            drug_names.append(line.strip())
+    
+    pos_tags = nltk.pos_tag([token[0] for token in tokens])
+    lemmatizer = WordNetLemmatizer()
+
+    for k, (token, pos_tag) in enumerate(zip(tokens, pos_tags)):
         tokenFeatures = []
         t = tokens[k][0]
-
+        
+        # Basic features
+        tokenFeatures.append("pos_tag=" + pos_tag[1])
         tokenFeatures.append("form=" + t)
         tokenFeatures.append("prefix=" + t[:prefix_length])
         tokenFeatures.append("suffix=" + t[-suffix_length:])
-
+        
+        # Lemma
+        lemma = lemmatizer.lemmatize(t)
+        tokenFeatures.append("lemma=" + lemma)
+        
+        # Additional features
+        tokenFeatures.append("length=" + str(len(t)))
+        tokenFeatures.append("hasDash=" + str(bool(re.search('-', t))))
+        tokenFeatures.append("containNumber=" + str(bool(re.search(r'\d', t))))
+        tokenFeatures.append("isStopword=" + str(t.lower() in stop_words))
+        tokenFeatures.append("isPunctuation=" + str(bool(re.search(r'[^\w\s]', t))))
+        tokenFeatures.append("isSpecialChar=" + str(bool(re.search(r'[^a-zA-Z0-9\s]', t))))
+        
+        # Features for previous token
         if k > 0:
-            tPrev = tokens[k-1][0]
+            tPrev, posPrev = tokens[k-1][0], pos_tags[k-1][1]
             tokenFeatures.append("formPrev=" + tPrev)
+            tokenFeatures.append("pos_tagPrev=" + posPrev)
             tokenFeatures.append("suf3Prev=" + tPrev[-suffix_length:])
         else:
-            tokenFeatures.append("BoS")
-
+            tokenFeatures.extend(["BoS", "pos_tagPrev=BoS"])
+        
+        # Features for next token
         if k < len(tokens) - 1:
-            tNext = tokens[k+1][0]
+            tNext, posNext = tokens[k+1][0], pos_tags[k+1][1]
             tokenFeatures.append("formNext=" + tNext)
+            tokenFeatures.append("pos_tagNext=" + posNext)
             tokenFeatures.append("suf3Next=" + tNext[-suffix_length:])
         else:
-            tokenFeatures.append("EoS")
+            tokenFeatures.extend(["EoS", "pos_tagNext=EoS"])
+        
+        # Capitalization
+        tokenFeatures.append("capitalization=true" if t.isupper() else "capitalization=false")
+
+        # Drug-related features
+        tokenFeatures.append("brand=true" if t in drug_brand_names else "brand=false")
+        tokenFeatures.append("drug=true" if t in drug_names else "drug=false")
+        tokenFeatures.append("group=true" if t in group_names else "group=false")
+        tokenFeatures.append("drug_n=true" if t in drug else "drug_n=false")
         
         result.append(tokenFeatures)
+    
     return result
 
 ## ------------------ Extract features tf-idf for each token in given sentence ----------------------
-from sklearn.feature_extraction.text import TfidfVectorizer
-def extract_tfidf_features(tokens):
+
+def extract_pos_features(tokens):
     result = []
-    token_strings = []
-    prefix_length=3
-    suffix_length=3
-    for k in range(len(tokens)):
+    pos_tags = nltk.pos_tag([token[0] for token in tokens])
+    for k, (token, pos_tag) in enumerate(zip(tokens, pos_tags)):
         tokenFeatures = []
-        t = tokens[k][0]
-
-        tokenFeatures.append("form=" + t)
-        tokenFeatures.append("prefix=" + t[:prefix_length])
-        tokenFeatures.append("suffix=" + t[-suffix_length:])
-
-        if k > 0:
+        tokenFeatures.append("form=" + token[0])
+        tokenFeatures.append("pos_tag=" + pos_tag[1])
+        
+        if k > 0 :
             tPrev = tokens[k-1][0]
-            tokenFeatures.append("formPrev=" + tPrev)
-            tokenFeatures.append("suf3Prev=" + tPrev[-suffix_length:])
-        else:
+            tokenFeatures.append("formPrev="+tPrev)
+            tokenFeatures.append("suf3Prev="+tPrev[-3:])
+        else :
             tokenFeatures.append("BoS")
 
-        if k < len(tokens) - 1:
+        if k < len(tokens)-1 :
             tNext = tokens[k+1][0]
-            tokenFeatures.append("formNext=" + tNext)
-            tokenFeatures.append("suf3Next=" + tNext[-suffix_length:])
+            tokenFeatures.append("formNext="+tNext)
+            tokenFeatures.append("suf3Next="+tNext[-3:])
         else:
             tokenFeatures.append("EoS")
-        
+            
         result.append(tokenFeatures)
-        token_strings.append(t)
-    tfidf_vectorizer = TfidfVectorizer()
-    tfidf_features = tfidf_vectorizer.fit_transform(token_strings)
-    feature_names = tfidf_vectorizer.get_feature_names_out()
-    for i, tfidf_row in enumerate(tfidf_features):
-        tfidf_values = tfidf_row.toarray()[0]
-        tfidf_token_features = [f"tfidf_{feature}={value:.3f}" for feature, value in zip(feature_names, tfidf_values)]
-        result[i] += tfidf_token_features
-    
     return result
 
 ## ------------------- Drugnames to use for synonym detection ---------------------
 def is_drug_name(token):
     # Read drug names from the text file
-    with open('resources/HSDB.txt', 'r') as file:
+    with open('/Users/bielcave/Documents/MDS/4th_Semester/MUD/lab_resources/DDI/resources/HSDB.txt', 'r') as file:
         drug_names = {line.strip().lower() for line in file}
 
     return token.lower() in drug_names
@@ -279,7 +399,7 @@ for f in listdir(datadir) :
       # convert the sentence to a list of tokens
       tokens = tokenize(stext)
       # extract sentence features
-      features = extract_features(tokens) ##change this part for every testing
+      features = extract_synonyms_features(tokens) ##change this part for every testing
 
       # print features in format expected by crfsuite trainer
       for i in range (0,len(tokens)):
