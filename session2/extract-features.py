@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-
+## ---------------------------------------------------------------------------- Libraries --------------------------------------------------------------------------------- 
 import sys
 import re
 from os import listdir
@@ -12,10 +12,10 @@ import nltk
 from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
-
+## ---------------------------------------------------------------------------- Default functions from lab --------------------------------------------------------------------------------- 
 ## --------- tokenize sentence ----------- 
 ## -- Tokenize sentence, returning tokens and span offsets
-
+#It iterates over each token generated with word_tokenize and by finding the position of the token being checked it appends the token wit its start offset and end
 def tokenize(txt):
     offset = 0
     tks = []
@@ -33,7 +33,10 @@ def tokenize(txt):
 
 ## --------- get tag ----------- 
 ##  Find out whether given token is marked as part of an entity in the XML
-
+#get_tag function gets information from token and it iterates over each span checking if start offset of the token checked matches the start offset of the span and if end offset is less or equal to the end ffset of span. 
+#This indicates the beginning of the entity and if it's not the case, and the start offsett of token is  is within the span and the end offset is less than or equal to the end offset of the span, it will indicate it's in the inside.
+#Other cases will indicate outside of entity.
+ 
 def get_tag(token, spans) :
    (form,start,end) = token
    for (spanS,spanE,spanT) in spans :
@@ -71,7 +74,7 @@ def extract_features(tokens) :
       result.append(tokenFeatures)
     
    return result
-
+## ---------------------------------------------------------------------------- Used Extract-features functions --------------------------------------------------------------------------------- 
 ## --------- DrugBank ----------
 def drugbank_extraction(tokens):
     drug_brand_names = []
@@ -204,13 +207,6 @@ def contextual_features(tokens):
 
     return result
 
-## --------- synonyms extraction ----------- 
-def get_synonyms(word):
-    synonyms = set()
-    for synset in wordnet.synsets(word):
-        for lemma in synset.lemmas():
-            synonyms.add(lemma.name())
-    return synonyms
 ## --------- prefixes-sufixes ----------- 
 def extract_features_prefix_suffix(tokens):
     result = []
@@ -319,15 +315,25 @@ def extract_pos_features(tokens):
             
         result.append(tokenFeatures)
     return result
-
+## ---------------------------------------------------------------------------- Tried extract feature functions --------------------------------------------------------------------------------- 
 ## ------------------- Drugnames to use for synonym detection ---------------------
 def is_drug_name(token):
-    # Read drug names from the text file
-    with open('/Users/bielcave/Documents/MDS/4th_Semester/MUD/lab_resources/DDI/resources/HSDB.txt', 'r') as file:
-        drug_names = {line.strip().lower() for line in file}
+    with open("C:/Users/cperez/OneDrive - IREC-edu/05_MASTER/MUD/lab_resources/lab_resources/DDI/resources/HSDB.txt", 'r') as file:
+        hsdb_drug_names = {line.strip().lower() for line in file}
+    with open("C:/Users/cperez/OneDrive - IREC-edu/05_MASTER/MUD/lab_resources/lab_resources/DDI/resources/DrugBank.txt", 'r') as file:
+        drugbank_drug_names = {line.strip().lower() for line in file}
+    all_drug = hsdb_drug_names | drugbank_drug_names
+    return token.lower() in all_drug
 
     return token.lower() in drug_names
-## ------------------- Extract synonyms ------------------------
+## --------- synonyms extraction ----------- 
+def get_synonyms(word):
+    synonyms = set()
+    for synset in wordnet.synsets(word):
+        for lemma in synset.lemmas():
+            synonyms.add(lemma.name())
+    return synonyms
+## ------------------- Extract synonyms -------------
 def extract_synonyms_features(tokens):
     result = []
     for k in range(len(tokens)):
@@ -361,9 +367,48 @@ def extract_synonyms_features(tokens):
             expanded_features.append("\t".join(features))
 
     return expanded_features
+## -------------------- Extract features tf-idf for each token in given sentence-------------------------------
+from sklearn.feature_extraction.text import TfidfVectorizer
+def extract_tfidf_features(tokens):
+    result = []
+    token_strings = []
+    prefix_length=3
+    suffix_length=3
+    for k in range(len(tokens)):
+        tokenFeatures = []
+        t = tokens[k][0]
 
+        tokenFeatures.append("form=" + t)
+        tokenFeatures.append("prefix=" + t[:prefix_length])
+        tokenFeatures.append("suffix=" + t[-suffix_length:])
 
-## --------- MAIN PROGRAM ----------- 
+        if k > 0:
+            tPrev = tokens[k-1][0]
+            tokenFeatures.append("formPrev=" + tPrev)
+            tokenFeatures.append("suf3Prev=" + tPrev[-suffix_length:])
+        else:
+            tokenFeatures.append("BoS")
+
+        if k < len(tokens) - 1:
+            tNext = tokens[k+1][0]
+            tokenFeatures.append("formNext=" + tNext)
+            tokenFeatures.append("suf3Next=" + tNext[-suffix_length:])
+        else:
+            tokenFeatures.append("EoS")
+        
+        result.append(tokenFeatures)
+        token_strings.append(t)
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_features = tfidf_vectorizer.fit_transform(token_strings)
+    feature_names = tfidf_vectorizer.get_feature_names_out()
+    for i, tfidf_row in enumerate(tfidf_features):
+        tfidf_values = tfidf_row.toarray()[0]
+        tfidf_token_features = [f"tfidf_{feature}={value:.3f}" for feature, value in zip(feature_names, tfidf_values)]
+        result[i] += tfidf_token_features
+    
+    return result
+
+## -------------------------------------------------------------------------- MAIN PROGRAM --------------------------------------------------------------------------------
 ## --
 ## -- Usage:  baseline-NER.py target-dir
 ## --
