@@ -301,7 +301,7 @@ def entity_types(tree, entities, e1, e2):
             feats.add("wib=" + word)
             feats.add("lpib=" + lemma + "_" + tag)
         
-        # Determine prepositions and verbs based on PoS tag
+
         prepositions = [tree.get_word(tk).lower() for tk in range(tkE1 + 1, tkE2) if tree.get_tag(tk).startswith('IN')]
         verbs = [tree.get_word(tk).lower() for tk in range(tkE1 + 1, tkE2) if tree.get_tag(tk).startswith('V')]
         
@@ -343,16 +343,16 @@ def entity_types_next(tree, entities, e1, e2):
         feats.add("prepositions=" + "_".join(prepositions))
         feats.add("verbs=" + "_".join(verbs))
         
-        # Add entity types
+  
         e1_type = entities[e1].get('type', '<none>')
         e2_type = entities[e2].get('type', '<none>')
         feats.add("e1_type=" + e1_type)
         feats.add("e2_type=" + e2_type)
         
-        # Add next entity types for tkE1 and tkE2
+
         for i, entity in enumerate([tkE1, tkE2]):
             next_entity_types = []
-            for tk in range(entity + 1, min(tree.get_n_nodes(), entity + 3)):  # up to two nodes ahead
+            for tk in range(entity + 1, min(tree.get_n_nodes(), entity + 3)):
                 if tk in entities and tree.is_entity(tk, entities):
                     next_entity_type = entities[tk].get('type', '<none>')
                     next_entity_types.append(next_entity_type)
@@ -360,6 +360,50 @@ def entity_types_next(tree, entities, e1, e2):
     
     return feats
 
+######NEW FUNCTION INCLUDES ADVERBS FOR PREVIOUS
+def entity_types_next(tree, entities, e1, e2):
+    feats = set()
+    # get head token for each gold entity
+    tkE1 = tree.get_fragment_head(entities[e1]['start'], entities[e1]['end'])
+    tkE2 = tree.get_fragment_head(entities[e2]['start'], entities[e2]['end'])
+    
+    if tkE1 is not None and tkE2 is not None:
+        # features for tokens in between E1 and E2
+        for tk in range(tkE1 + 1, tkE2):
+            try:
+                while tree.is_stopword(tk):
+                    tk += 1
+            except:
+                return set()
+            word = tree.get_word(tk)
+            lemma = tree.get_lemma(tk).lower()
+            tag = tree.get_tag(tk)
+            feats.add("lib=" + lemma)
+            feats.add("wib=" + word)
+            feats.add("lpib=" + lemma + "_" + tag)
+        
+        prepositions = [tree.get_word(tk).lower() for tk in range(tkE1 + 1, tkE2) if tree.get_tag(tk).startswith('IN')]
+        verbs = [tree.get_word(tk).lower() for tk in range(tkE1 + 1, tkE2) if tree.get_tag(tk).startswith('V')]
+        adverbs = [tree.get_word(tk).lower() for tk in range(tkE1 + 1, tkE2) if tree.get_tag(tk).startswith('RB')]
+        
+        feats.add("prepositions=" + "_".join(prepositions))
+        feats.add("verbs=" + "_".join(verbs))
+        feats.add("adverbs=" + "_".join(adverbs))
+        e1_type = entities[e1].get('type', '<none>')
+        e2_type = entities[e2].get('type', '<none>')
+        feats.add("e1_type=" + e1_type)
+        feats.add("e2_type=" + e2_type)
+        
+
+        for i, entity in enumerate([tkE1, tkE2]):
+            next_entity_types = []
+            for tk in range(entity + 1, min(tree.get_n_nodes(), entity + 3)):
+                if tk in entities and tree.is_entity(tk, entities):
+                    next_entity_type = entities[tk].get('type', '<none>')
+                    next_entity_types.append(next_entity_type)
+            feats.add("next_entity{}_types=".format(i + 1) + "_".join(next_entity_types))
+    
+    return feats
 ## --------- MAIN PROGRAM ----------- 
 ## --
 ## -- Usage:  extract_features targetdir
